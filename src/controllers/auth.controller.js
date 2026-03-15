@@ -1,5 +1,5 @@
 import userModel from "../models/user.model.js";
-import crypto from "crypto";
+import bcrypt from "bcryptjs";
 import jwt from "jsonwebtoken";
 import config from "../config/config.js";
 
@@ -17,10 +17,7 @@ export async function register(req, res) {
     });
   }
 
-  const hashedPassword = crypto
-    .createHash("sha256")
-    .update(password)
-    .digest("hex");
+  const hashedPassword = await bcrypt.hash(password, 10);
 
   const user = await userModel.create({
     userName,
