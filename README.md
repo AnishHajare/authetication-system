@@ -140,31 +140,6 @@ This approach significantly improves security and prevents reuse of compromised 
 
 ---
 
-# 🔒 Security Practices Implemented
-
-- Password hashing using **bcrypt**
-- Access token expiration
-- Refresh token rotation
-- Session tracking for multiple devices
-- OTP verification
-- Secure logout mechanisms
-- Authentication middleware protection
-
----
-
-# 🎯 Learning Outcomes
-
-This project demonstrates key backend authentication concepts including:
-
-- Stateless authentication using JWT
-- Token lifecycle management
-- Refresh token rotation strategies
-- Multi-device session handling
-- Secure API authentication
-- Modular backend architecture
-
----
-
 # 📜 License
 
 This project is intended for **educational and learning purposes**.
