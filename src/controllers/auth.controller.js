@@ -72,6 +72,72 @@ export async function register(req, res) {
   });
 }
 
+export async function login(req, res) {
+  const { email, password } = req.body;
+
+  const user = await userModel.findOne({
+    email,
+  });
+
+  if (!user) {
+    return res.status(401).json({
+      message: "Invalid credentials",
+    });
+  }
+
+  const isPasswordValid = await bcrypt.compare(password, user.password);
+
+  if (!isPasswordValid) {
+    return res.status(401).json({
+      message: "Invalid credentials",
+    });
+  }
+  const refreshToken = jwt.sign(
+    {
+      id: user._id,
+    },
+    config.JWT_SECRET,
+    { expiresIn: "7d" },
+  );
+
+  const refreshTokenHash = crypto
+    .createHash("sha256")
+    .update(refreshToken)
+    .digest("hex");
+
+  const session = await sessionModel.create({
+    userId: user._id,
+    refreshTokenHash,
+    ip: req.ip,
+    userAgent: req.headers["user-agent"],
+  });
+
+  const accessToken = jwt.sign(
+    {
+      id: user._id,
+      sessionId: session._id,
+    },
+    config.JWT_SECRET,
+    { expiresIn: "15m" },
+  );
+
+  res.cookie("refreshToken", refreshToken, {
+    httpOnly: true,
+    secure: true,
+    sameSite: "strict",
+    maxAge: 7 * 24 * 60 * 60 * 1000,
+  });
+
+  res.status(201).json({
+    message: "User logged in  successfully",
+    user: {
+      userName: user.userName,
+      email: user.email,
+    },
+    accessToken,
+  });
+}
+
 export async function getMe(req, res) {
   const token = req.headers.authorization?.split(" ")[1];
 
