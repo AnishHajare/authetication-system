@@ -9,6 +9,8 @@ import { sendEmail } from "./email.service.js";
 import { generateOtp, getOtpHtml } from "../utils/utils.js";
 import AppError from "../utils/app-error.js";
 
+let emailSender = sendEmail;
+
 function hashValue(value) {
   return crypto.createHash("sha256").update(value).digest("hex");
 }
@@ -31,6 +33,7 @@ function signAccessToken(payload) {
 function signRefreshToken(payload) {
   return jwt.sign(payload, config.JWT_SECRET, {
     expiresIn: config.REFRESH_TOKEN_EXPIRES_IN,
+    jwtid: crypto.randomUUID(),
   });
 }
 
@@ -55,7 +58,7 @@ async function createOtpForUser(user) {
 
 async function sendVerificationEmail(user) {
   const { otp, html } = await createOtpForUser(user);
-  await sendEmail(
+  await emailSender(
     user.email,
     "OTP Verification",
     `Your OTP code is ${otp}`,
@@ -91,6 +94,14 @@ export async function registerUser({ userName, email, password }) {
   }
 
   return user;
+}
+
+export function setEmailSender(sender) {
+  emailSender = sender;
+}
+
+export function resetEmailSender() {
+  emailSender = sendEmail;
 }
 
 export async function resendVerificationEmail(email) {
@@ -263,7 +274,7 @@ export async function verifyUserEmail({ email, otp }) {
   const user = await userModel.findByIdAndUpdate(
     otpDoc.userId,
     { verified: true },
-    { new: true },
+    { returnDocument: "after" },
   ).select("-password");
 
   if (!user) {

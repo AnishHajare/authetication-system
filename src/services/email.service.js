@@ -23,17 +23,19 @@ const transporter = nodemailer.createTransport({
   },
 });
 
-transporter.verify((error, success) => {
-  if (error) {
-    logger.error("Error connecting to email server", {
-      error: error.message,
-    });
-  } else {
-    logger.info("Email server is ready to send messages", {
-      success,
-    });
-  }
-});
+if (config.NODE_ENV !== "test") {
+  transporter.verify((error, success) => {
+    if (error) {
+      logger.error("Error connecting to email server", {
+        error: error.message,
+      });
+    } else {
+      logger.info("Email server is ready to send messages", {
+        success,
+      });
+    }
+  });
+}
 
 export const sendEmail = async (to, subject, text, html) => {
   try {

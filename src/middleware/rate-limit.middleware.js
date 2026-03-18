@@ -40,3 +40,7 @@ export function rateLimit(label) {
     return next();
   };
 }
+
+export function resetRateLimitStore() {
+  requestStore.clear();
+}
