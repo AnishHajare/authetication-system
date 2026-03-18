@@ -211,7 +211,6 @@ The included tests cover validation middleware and rate limiting. They do not pe
 
 - Rate limiting uses in-memory storage, so it is not shared across multiple server instances
 - There is no background job for cleaning expired OTP records
-- Tests are currently focused on middleware behavior, not full integration flows
 - Gmail delivery depends on valid Google OAuth2 credentials and mailbox configuration
 
 ## License
