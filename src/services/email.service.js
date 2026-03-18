@@ -1,6 +1,7 @@
 import nodemailer from "nodemailer";
 import { google } from "googleapis";
 import config from "../config/config.js";
+import { logger } from "../utils/logger.js";
 
 const oAuth2Client = new google.auth.OAuth2(
   config.GOOGLE_CLIENT_ID,
@@ -24,9 +25,13 @@ const transporter = nodemailer.createTransport({
 
 transporter.verify((error, success) => {
   if (error) {
-    console.log("Error connecting to email server", error);
+    logger.error("Error connecting to email server", {
+      error: error.message,
+    });
   } else {
-    console.log("Email server is ready to send messages");
+    logger.info("Email server is ready to send messages", {
+      success,
+    });
   }
 });
 
@@ -40,7 +45,7 @@ export const sendEmail = async (to, subject, text, html) => {
     }
 
     const info = await transporter.sendMail({
-      from: `"Anish" <${config.GOOGLE_USER}>`,
+      from: `"${config.MAIL_FROM_NAME}" <${config.GOOGLE_USER}>`,
       to,
       subject,
       text,
@@ -54,10 +59,18 @@ export const sendEmail = async (to, subject, text, html) => {
         accessToken: token,
       },
     });
-    console.log("Message sent: %s", info.messageId);
-    console.log("Preview url: %s", nodemailer.getTestMessageUrl(info));
+    logger.info("Email sent", {
+      messageId: info.messageId,
+      previewUrl: nodemailer.getTestMessageUrl(info),
+      to,
+      subject,
+    });
   } catch (error) {
-    console.log("Error sending email", error);
+    logger.error("Error sending email", {
+      error: error.message,
+      to,
+      subject,
+    });
     throw error;
   }
 };
