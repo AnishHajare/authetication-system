@@ -1,149 +1,219 @@
-# 🔐 Production-Ready Authentication System
+# Authentication System
 
-A **secure and scalable authentication system** built with **Node.js, Express, MongoDB, and JWT** that demonstrates how modern backend applications manage authentication and session lifecycle.
+An Express and MongoDB authentication API with email-based account verification, JWT access tokens, refresh-token rotation, session tracking, and OTP delivery through Gmail OAuth2.
 
-Unlike basic login tutorials, this project focuses on **production-level authentication architecture**, implementing advanced concepts such as **Access Tokens, Refresh Tokens, Token Rotation, Session Management, OTP Verification, and Secure Logout Mechanisms**.
+## Overview
 
-The goal of this project is to understand how real-world backend systems securely handle **user authentication, token lifecycle, and multi-device session management**.
+This project is a backend-focused authentication service designed around a more realistic token lifecycle than a basic login example. It includes:
 
----
+- User registration with hashed passwords
+- Email verification using a 6-digit OTP
+- Registration rollback if verification email delivery fails
+- JWT access tokens for authenticated API requests
+- Refresh tokens stored in secure cookies
+- Refresh-token rotation backed by server-side session records
+- Logout for the current device or all devices
+- Input validation, rate limiting, and centralized error handling
 
-# 📌 Project Overview
+## Tech Stack
 
-Authentication is one of the most critical components of any modern web application. Many basic authentication implementations fail to address real-world security challenges such as:
-
-- token theft
-- session hijacking
-- compromised refresh tokens
-- multi-device login management
-
-This project demonstrates how production systems mitigate these risks by implementing:
-
-- **Short-lived access tokens**
-- **Long-lived refresh tokens**
-- **Refresh token rotation**
-- **Secure session tracking**
-- **OTP-based authentication**
-- **Logout from individual or all devices**
-
-The architecture implemented here mirrors authentication systems used in **large-scale production applications and SaaS platforms**.
-
----
-
-# 🚀 Features Implemented
-
-### User Authentication
-- Secure user registration
-- Password hashing using **bcrypt**
-- JWT-based authentication
-- Access token generation for API requests
-
-### Token Management
-- Access tokens with expiration
-- Refresh tokens for session renewal
-- Refresh token rotation
-- Token validation and expiration handling
-
-### Session Management
-- Persistent login sessions
-- Multi-device session support
-- Session tracking stored in database
-
-### Logout Mechanisms
-- Logout from current device
-- Logout from all devices
-- Refresh token invalidation
-
-### OTP Authentication
-- One-time password generation
-- OTP verification workflow
-- OTP expiration handling
-
-### Security Features
-- Password hashing
-- JWT verification middleware
-- Secure cookie handling
-- Token lifecycle management
-- Protection against stolen refresh tokens
-
----
-
-# 🧰 Tech Stack
-
-### Backend
 - Node.js
-- Express.js
-
-### Database
-- MongoDB
-- Mongoose
-
-### Authentication & Security
-- JSON Web Tokens (JWT)
+- Express
+- MongoDB with Mongoose
+- JSON Web Tokens
 - bcryptjs
+- Nodemailer
+- Google OAuth2 for Gmail SMTP
 
-### Development Tools
-- dotenv
-- nodemon
+## Project Structure
 
----
+```text
+src/
+  app.js
+  config/
+  controllers/
+  middleware/
+  models/
+  routes/
+  services/
+  utils/
+test/
+server.js
+```
 
-# 🧠 Authentication Architecture
+## Authentication Flow
 
-This system implements a **dual-token authentication model**.
+### Registration
 
-## Access Token
-- Short lifespan
-- Used to authenticate API requests
-- Sent in request headers
+1. Client sends `userName`, `email`, and `password`
+2. Server validates the payload and checks for duplicates
+3. Password is hashed with `bcrypt`
+4. User is created as unverified
+5. A one-time password is generated, hashed, stored with an expiry, and emailed
+6. If email delivery fails, the OTP and user record are deleted
 
-## Refresh Token
-- Longer lifespan
-- Used to generate new access tokens
-- Stored securely and validated against database
+### Login
 
-### Token Lifecycle Flow
+1. Client sends `email` and `password`
+2. Server verifies credentials and checks that the account is verified
+3. Server creates:
+   - a short-lived access token
+   - a refresh token stored in an `httpOnly` cookie
+   - a session record containing the hashed refresh token
 
-1. User logs in with credentials
-2. Server generates:
-   - Access Token
-   - Refresh Token
-3. Access token is used for API requests
-4. When access token expires:
-   - Client sends refresh token
-5. Server validates refresh token
-6. Server issues:
-   - New access token
-   - Rotated refresh token
+### Refresh Token Rotation
 
-This approach significantly improves security and prevents reuse of compromised tokens.
+1. Client calls the refresh endpoint with the existing refresh-token cookie
+2. Server validates the cookie and matches its hash against the session store
+3. Server issues a new access token and a new refresh token
+4. The stored session hash is replaced with the new refresh-token hash
 
----
+### Email Verification
 
-# 🔗 Example Authentication Flow
+1. Client submits `email` and OTP code
+2. Server compares the hashed OTP
+3. If valid and not expired, the user is marked as verified
+4. OTP records for that user are deleted
 
-### Login Process
+## API Endpoints
 
-1. User submits email and password
-2. Server validates credentials
-3. Access token is generated
-4. Refresh token is generated and stored
-5. Client uses access token for API requests
+Base path: `/api/auth`
 
-### Token Refresh Process
+| Method | Endpoint | Description |
+| --- | --- | --- |
+| `POST` | `/register` | Register a user and send verification OTP |
+| `POST` | `/login` | Authenticate a verified user |
+| `GET` | `/get-me` | Return the current user from the access token |
+| `GET` | `/refresh-token` | Rotate refresh token and issue a new access token |
+| `GET` | `/logout` | Revoke the current session |
+| `GET` | `/logout-all` | Revoke all sessions for the authenticated user |
+| `POST` | `/verify-email` | Verify the email address using OTP |
+| `POST` | `/resend-verification-email` | Send a new OTP if the cooldown has passed |
 
-1. Access token expires
-2. Client sends refresh token
-3. Server validates refresh token
-4. Server generates new access token
-5. Refresh token is rotated
+## Request Examples
 
----
+### Register
 
-# 📜 License
+```http
+POST /api/auth/register
+Content-Type: application/json
 
-This project is intended for **educational and learning purposes**.
+{
+  "userName": "anish",
+  "email": "anish@example.com",
+  "password": "strongpassword123"
+}
+```
 
----
+### Verify Email
 
-⭐ If you find this project helpful, consider **starring the repository**.
+```http
+POST /api/auth/verify-email
+Content-Type: application/json
+
+{
+  "email": "anish@example.com",
+  "otp": "123456"
+}
+```
+
+### Login
+
+```http
+POST /api/auth/login
+Content-Type: application/json
+
+{
+  "email": "anish@example.com",
+  "password": "strongpassword123"
+}
+```
+
+### Get Current User
+
+```http
+GET /api/auth/get-me
+Authorization: Bearer <access_token>
+```
+
+## Environment Variables
+
+Copy [`.env.example`](/Users/anish/Desktop/authentication-system/.env.example) to `.env` and set the required values.
+
+| Variable | Required | Description |
+| --- | --- | --- |
+| `NODE_ENV` | No | Runtime environment, defaults to `development` |
+| `PORT` | No | Server port, defaults to `3000` |
+| `MONGO_URI` | Yes | MongoDB connection string |
+| `JWT_SECRET` | Yes | Secret used to sign JWTs |
+| `GOOGLE_CLIENT_ID` | Yes | Google OAuth2 client ID |
+| `GOOGLE_CLIENT_SECRET` | Yes | Google OAuth2 client secret |
+| `GOOGLE_REFRESH_TOKEN` | Yes | Refresh token for Gmail sending |
+| `GOOGLE_USER` | Yes | Gmail address used as sender |
+| `MAIL_FROM_NAME` | No | Display name for outgoing emails |
+| `ACCESS_TOKEN_EXPIRES_IN` | No | Access-token lifetime |
+| `REFRESH_TOKEN_EXPIRES_IN` | No | Refresh-token lifetime |
+| `OTP_EXPIRY_MINUTES` | No | OTP validity window |
+| `OTP_RESEND_COOLDOWN_SECONDS` | No | Minimum delay before sending another OTP |
+| `RATE_LIMIT_WINDOW_MS` | No | Rate-limit window duration |
+| `RATE_LIMIT_MAX_REQUESTS` | No | Max requests allowed per IP per window |
+| `COOKIE_SECURE` | No | Whether refresh-token cookies require HTTPS |
+| `COOKIE_SAME_SITE` | No | SameSite policy for refresh-token cookies |
+
+## Local Development
+
+### 1. Install dependencies
+
+```bash
+npm install
+```
+
+### 2. Configure environment variables
+
+```bash
+cp .env.example .env
+```
+
+### 3. Start MongoDB
+
+Make sure a MongoDB instance is running and reachable through `MONGO_URI`.
+
+### 4. Run the server
+
+```bash
+npm run dev
+```
+
+The API starts on `http://localhost:3000` unless `PORT` is overridden.
+
+## Testing
+
+Run the current test suite with:
+
+```bash
+npm test
+```
+
+The included tests cover validation middleware and rate limiting. They do not perform live database or SMTP integration checks.
+
+## Security Notes
+
+- Passwords are hashed before storage
+- Refresh tokens are stored as hashes in the database
+- Refresh tokens are rotated on every refresh request
+- Refresh tokens are delivered via `httpOnly` cookies
+- OTPs are stored as hashes, not plaintext
+- OTPs expire automatically based on configuration
+- Registration is rolled back if verification email delivery fails
+- Basic per-IP rate limiting is applied to auth-sensitive routes
+
+## Current Limitations
+
+- Rate limiting uses in-memory storage, so it is not shared across multiple server instances
+- There is no background job for cleaning expired OTP records
+- Tests are currently focused on middleware behavior, not full integration flows
+- Gmail delivery depends on valid Google OAuth2 credentials and mailbox configuration
+
+## License
+
+This project is provided for educational and portfolio use unless you define a different license for distribution.
