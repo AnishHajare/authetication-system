@@ -23,11 +23,17 @@ const sessionSchema = new mongoose.Schema(
       type: Boolean,
       default: false,
     },
+    revokedAt: {
+      type: Date,
+      default: null,
+    },
   },
   {
     timestamps: true,
   },
 );
+
+sessionSchema.index({ revoked: 1, revokedAt: 1 });
 
 const sessionModel = mongoose.model("sessions", sessionSchema);
 

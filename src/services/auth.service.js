@@ -350,6 +350,7 @@ export async function revokeCurrentSession(refreshToken) {
   }
 
   session.revoked = true;
+  session.revokedAt = new Date();
   await session.save();
   logAuthEvent("logout", "success", {
     userId: session.userId.toString(),
@@ -367,12 +368,13 @@ export async function revokeAllSessions(refreshToken) {
 
   const decoded = jwt.verify(refreshToken, config.JWT_SECRET);
 
+  const now = new Date();
   const result = await sessionModel.updateMany(
     {
       userId: decoded.id,
       revoked: false,
     },
-    { revoked: true },
+    { revoked: true, revokedAt: now },
   );
   logAuthEvent("logout-all", "success", {
     userId: String(decoded.id),

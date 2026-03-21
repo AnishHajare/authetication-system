@@ -84,6 +84,7 @@ export async function createSessionForUser(user, overrides = {}) {
     ip: overrides.ip || "127.0.0.1",
     userAgent: overrides.userAgent || "test-agent",
     revoked: overrides.revoked ?? false,
+    revokedAt: overrides.revokedAt ?? null,
   });
 }
 

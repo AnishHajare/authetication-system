@@ -8,6 +8,7 @@
     "start": "node server.js",
     "test": "node --test --test-concurrency=1",
     "check": "node --test --test-concurrency=1",
+    "cleanup:auth": "node scripts/cleanup-auth-data.js",
     "dev": "npx nodemon server.js"
   },
   "keywords": [],
