@@ -79,16 +79,16 @@ server.js
 
 Base path: `/api/auth`
 
-| Method | Endpoint | Description |
-| --- | --- | --- |
-| `POST` | `/register` | Register a user and send verification OTP |
-| `POST` | `/login` | Authenticate a verified user |
-| `GET` | `/get-me` | Return the current user from the access token |
-| `GET` | `/refresh-token` | Rotate refresh token and issue a new access token |
-| `GET` | `/logout` | Revoke the current session |
-| `GET` | `/logout-all` | Revoke all sessions for the authenticated user |
-| `POST` | `/verify-email` | Verify the email address using OTP |
-| `POST` | `/resend-verification-email` | Send a new OTP if the cooldown has passed |
+| Method | Endpoint                     | Description                                       |
+| ------ | ---------------------------- | ------------------------------------------------- |
+| `POST` | `/register`                  | Register a user and send verification OTP         |
+| `POST` | `/login`                     | Authenticate a verified user                      |
+| `GET`  | `/get-me`                    | Return the current user from the access token     |
+| `GET`  | `/refresh-token`             | Rotate refresh token and issue a new access token |
+| `GET`  | `/logout`                    | Revoke the current session                        |
+| `GET`  | `/logout-all`                | Revoke all sessions for the authenticated user    |
+| `POST` | `/verify-email`              | Verify the email address using OTP                |
+| `POST` | `/resend-verification-email` | Send a new OTP if the cooldown has passed         |
 
 ## Request Examples
 
@@ -138,27 +138,27 @@ Authorization: Bearer <access_token>
 
 ## Environment Variables
 
-Copy [`.env.example`](/Users/anish/Desktop/authentication-system/.env.example) to `.env` and set the required values.
+Copy `.env.example` to `.env` and set the required values.
 
-| Variable | Required | Description |
-| --- | --- | --- |
-| `NODE_ENV` | No | Runtime environment, defaults to `development` |
-| `PORT` | No | Server port, defaults to `3000` |
-| `MONGO_URI` | Yes | MongoDB connection string |
-| `JWT_SECRET` | Yes | Secret used to sign JWTs |
-| `GOOGLE_CLIENT_ID` | Yes | Google OAuth2 client ID |
-| `GOOGLE_CLIENT_SECRET` | Yes | Google OAuth2 client secret |
-| `GOOGLE_REFRESH_TOKEN` | Yes | Refresh token for Gmail sending |
-| `GOOGLE_USER` | Yes | Gmail address used as sender |
-| `MAIL_FROM_NAME` | No | Display name for outgoing emails |
-| `ACCESS_TOKEN_EXPIRES_IN` | No | Access-token lifetime |
-| `REFRESH_TOKEN_EXPIRES_IN` | No | Refresh-token lifetime |
-| `OTP_EXPIRY_MINUTES` | No | OTP validity window |
-| `OTP_RESEND_COOLDOWN_SECONDS` | No | Minimum delay before sending another OTP |
-| `RATE_LIMIT_WINDOW_MS` | No | Rate-limit window duration |
-| `RATE_LIMIT_MAX_REQUESTS` | No | Max requests allowed per IP per window |
-| `COOKIE_SECURE` | No | Whether refresh-token cookies require HTTPS |
-| `COOKIE_SAME_SITE` | No | SameSite policy for refresh-token cookies |
+| Variable                      | Required | Description                                    |
+| ----------------------------- | -------- | ---------------------------------------------- |
+| `NODE_ENV`                    | No       | Runtime environment, defaults to `development` |
+| `PORT`                        | No       | Server port, defaults to `3000`                |
+| `MONGO_URI`                   | Yes      | MongoDB connection string                      |
+| `JWT_SECRET`                  | Yes      | Secret used to sign JWTs                       |
+| `GOOGLE_CLIENT_ID`            | Yes      | Google OAuth2 client ID                        |
+| `GOOGLE_CLIENT_SECRET`        | Yes      | Google OAuth2 client secret                    |
+| `GOOGLE_REFRESH_TOKEN`        | Yes      | Refresh token for Gmail sending                |
+| `GOOGLE_USER`                 | Yes      | Gmail address used as sender                   |
+| `MAIL_FROM_NAME`              | No       | Display name for outgoing emails               |
+| `ACCESS_TOKEN_EXPIRES_IN`     | No       | Access-token lifetime                          |
+| `REFRESH_TOKEN_EXPIRES_IN`    | No       | Refresh-token lifetime                         |
+| `OTP_EXPIRY_MINUTES`          | No       | OTP validity window                            |
+| `OTP_RESEND_COOLDOWN_SECONDS` | No       | Minimum delay before sending another OTP       |
+| `RATE_LIMIT_WINDOW_MS`        | No       | Rate-limit window duration                     |
+| `RATE_LIMIT_MAX_REQUESTS`     | No       | Max requests allowed per IP per window         |
+| `COOKIE_SECURE`               | No       | Whether refresh-token cookies require HTTPS    |
+| `COOKIE_SAME_SITE`            | No       | SameSite policy for refresh-token cookies      |
 
 ## Local Development
 
@@ -185,6 +185,33 @@ npm run dev
 ```
 
 The API starts on `http://localhost:3000` unless `PORT` is overridden.
+
+## Docker
+
+This repository includes a minimal container setup for the API and MongoDB.
+
+### Prerequisites
+
+- Docker
+- Docker Compose
+
+### Run with Docker
+
+1. Create `.env` from `.env.example`
+2. Set the required Gmail OAuth2 and JWT values
+3. Start the stack:
+
+```bash
+docker compose up --build
+```
+
+The API will be available at `http://localhost:3000`.
+
+### Notes
+
+- `compose.yaml` overrides `MONGO_URI` to `mongodb://mongo:27017/authentication-system`
+- MongoDB data is persisted in the `mongo_data` Docker volume
+- The container uses `npm start`, which runs `node server.js`
 
 ## Testing
 
@@ -215,4 +242,4 @@ The included tests cover validation middleware and rate limiting. They do not pe
 
 ## License
 
-This project is provided for educational and portfolio use unless you define a different license for distribution.
+This project is provided for educational and portfolio use.
