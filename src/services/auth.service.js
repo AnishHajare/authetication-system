@@ -8,6 +8,7 @@ import userModel from "../models/user.model.js";
 import { sendEmail } from "./email.service.js";
 import { generateOtp, getOtpHtml } from "../utils/utils.js";
 import AppError from "../utils/app-error.js";
+import { logAuthEvent } from "../utils/audit-log.js";
 
 let emailSender = sendEmail;
 
@@ -72,6 +73,10 @@ export async function registerUser({ userName, email, password }) {
   });
 
   if (isAlreadyRegistered) {
+    logAuthEvent("register", "rejected", {
+      email,
+      reason: "duplicate-identity",
+    });
     throw new AppError(409, "Unable to register with the provided credentials");
   }
 
@@ -87,11 +92,21 @@ export async function registerUser({ userName, email, password }) {
   } catch (error) {
     await otpModel.deleteMany({ userId: user._id });
     await userModel.findByIdAndDelete(user._id);
+    logAuthEvent("register", "failed", {
+      userId: user._id.toString(),
+      email,
+      reason: "verification-email-delivery-failed",
+    });
     throw new AppError(
       502,
       "Failed to deliver verification email. Registration was rolled back.",
     );
   }
+
+  logAuthEvent("register", "success", {
+    userId: user._id.toString(),
+    email: user.email,
+  });
 
   return user;
 }
@@ -108,6 +123,10 @@ export async function resendVerificationEmail(email) {
   const user = await userModel.findOne({ email });
 
   if (!user || user.verified) {
+    logAuthEvent("resend-verification-email", "ignored", {
+      email,
+      reason: !user ? "user-not-found" : "already-verified",
+    });
     return false;
   }
 
@@ -121,11 +140,20 @@ export async function resendVerificationEmail(email) {
       config.OTP_RESEND_COOLDOWN_SECONDS * 1000;
 
     if (nextAllowedAt > Date.now()) {
+      logAuthEvent("resend-verification-email", "ignored", {
+        userId: user._id.toString(),
+        email: user.email,
+        reason: "cooldown-active",
+      });
       return false;
     }
   }
 
   await sendVerificationEmail(user);
+  logAuthEvent("resend-verification-email", "success", {
+    userId: user._id.toString(),
+    email: user.email,
+  });
   return true;
 }
 
@@ -133,16 +161,36 @@ export async function loginUser({ email, password, ip, userAgent }) {
   const user = await userModel.findOne({ email });
 
   if (!user) {
+    logAuthEvent("login", "failed", {
+      email,
+      ip,
+      userAgent,
+      reason: "invalid-credentials",
+    });
     throw new AppError(401, "Invalid email or password");
   }
 
   if (!user.verified) {
+    logAuthEvent("login", "failed", {
+      userId: user._id.toString(),
+      email: user.email,
+      ip,
+      userAgent,
+      reason: "invalid-credentials",
+    });
     throw new AppError(401, "Invalid email or password");
   }
 
   const isPasswordValid = await bcrypt.compare(password, user.password);
 
   if (!isPasswordValid) {
+    logAuthEvent("login", "failed", {
+      userId: user._id.toString(),
+      email: user.email,
+      ip,
+      userAgent,
+      reason: "invalid-credentials",
+    });
     throw new AppError(401, "Invalid email or password");
   }
 
@@ -162,6 +210,14 @@ export async function loginUser({ email, password, ip, userAgent }) {
     sessionId: session._id,
   });
 
+  logAuthEvent("login", "success", {
+    userId: user._id.toString(),
+    email: user.email,
+    ip,
+    userAgent,
+    sessionId: session._id.toString(),
+  });
+
   return {
     user,
     accessToken,
@@ -172,11 +228,18 @@ export async function loginUser({ email, password, ip, userAgent }) {
 
 export async function authenticateAccessToken(accessToken) {
   if (!accessToken) {
+    logAuthEvent("access-token-auth", "failed", {
+      reason: "token-missing",
+    });
     throw new AppError(401, "Token not found");
   }
 
   const decoded = jwt.verify(accessToken, config.JWT_SECRET);
   if (!decoded.sessionId) {
+    logAuthEvent("access-token-auth", "failed", {
+      userId: decoded.id,
+      reason: "session-id-missing",
+    });
     throw new AppError(401, "Unauthorized");
   }
 
@@ -187,14 +250,30 @@ export async function authenticateAccessToken(accessToken) {
   });
 
   if (!session) {
+    logAuthEvent("access-token-auth", "failed", {
+      userId: decoded.id,
+      sessionId: decoded.sessionId,
+      reason: "session-not-active",
+    });
     throw new AppError(401, "Unauthorized");
   }
 
   const user = await userModel.findById(decoded.id).select("-password");
 
   if (!user) {
+    logAuthEvent("access-token-auth", "failed", {
+      userId: decoded.id,
+      sessionId: decoded.sessionId,
+      reason: "user-not-found",
+    });
     throw new AppError(404, "User not found");
   }
+
+  logAuthEvent("access-token-auth", "success", {
+    userId: user._id.toString(),
+    email: user.email,
+    sessionId: session._id.toString(),
+  });
 
   return {
     user,
@@ -209,6 +288,9 @@ export async function getCurrentUser(accessToken) {
 
 export async function rotateRefreshToken(refreshToken) {
   if (!refreshToken) {
+    logAuthEvent("refresh-token", "failed", {
+      reason: "token-missing",
+    });
     throw new AppError(401, "Refresh token not found");
   }
 
@@ -220,6 +302,10 @@ export async function rotateRefreshToken(refreshToken) {
   });
 
   if (!session) {
+    logAuthEvent("refresh-token", "failed", {
+      userId: decoded.id,
+      reason: "invalid-refresh-token",
+    });
     throw new AppError(400, "Invalid refresh token");
   }
 
@@ -227,6 +313,11 @@ export async function rotateRefreshToken(refreshToken) {
 
   session.refreshTokenHash = hashValue(newRefreshToken);
   await session.save();
+
+  logAuthEvent("refresh-token", "success", {
+    userId: String(decoded.id),
+    sessionId: session._id.toString(),
+  });
 
   return {
     accessToken: signAccessToken({
@@ -240,6 +331,9 @@ export async function rotateRefreshToken(refreshToken) {
 
 export async function revokeCurrentSession(refreshToken) {
   if (!refreshToken) {
+    logAuthEvent("logout", "failed", {
+      reason: "refresh-token-missing",
+    });
     throw new AppError(400, "Refresh token not found");
   }
 
@@ -249,27 +343,41 @@ export async function revokeCurrentSession(refreshToken) {
   });
 
   if (!session) {
+    logAuthEvent("logout", "failed", {
+      reason: "invalid-refresh-token",
+    });
     throw new AppError(400, "Invalid refresh token");
   }
 
   session.revoked = true;
   await session.save();
+  logAuthEvent("logout", "success", {
+    userId: session.userId.toString(),
+    sessionId: session._id.toString(),
+  });
 }
 
 export async function revokeAllSessions(refreshToken) {
   if (!refreshToken) {
+    logAuthEvent("logout-all", "failed", {
+      reason: "refresh-token-missing",
+    });
     throw new AppError(400, "Refresh token not found");
   }
 
   const decoded = jwt.verify(refreshToken, config.JWT_SECRET);
 
-  await sessionModel.updateMany(
+  const result = await sessionModel.updateMany(
     {
       userId: decoded.id,
       revoked: false,
     },
     { revoked: true },
   );
+  logAuthEvent("logout-all", "success", {
+    userId: String(decoded.id),
+    revokedSessionCount: result.modifiedCount,
+  });
 }
 
 export async function verifyUserEmail({ email, otp }) {
@@ -278,10 +386,19 @@ export async function verifyUserEmail({ email, otp }) {
   });
 
   if (!otpDoc) {
+    logAuthEvent("verify-email", "failed", {
+      email,
+      reason: "otp-not-found",
+    });
     throw new AppError(400, "Invalid OTP");
   }
 
   if (otpDoc.lockedUntil && otpDoc.lockedUntil > new Date()) {
+    logAuthEvent("verify-email", "failed", {
+      userId: otpDoc.userId.toString(),
+      email,
+      reason: "otp-locked",
+    });
     throw new AppError(
       429,
       "Too many invalid OTP attempts. Please request a new code or try again later.",
@@ -290,6 +407,11 @@ export async function verifyUserEmail({ email, otp }) {
 
   if (otpDoc.expiresAt <= new Date()) {
     await otpModel.deleteOne({ _id: otpDoc._id });
+    logAuthEvent("verify-email", "failed", {
+      userId: otpDoc.userId.toString(),
+      email,
+      reason: "otp-expired",
+    });
     throw new AppError(400, "OTP has expired");
   }
 
@@ -305,12 +427,24 @@ export async function verifyUserEmail({ email, otp }) {
     await otpDoc.save();
 
     if (otpDoc.lockedUntil && otpDoc.lockedUntil > new Date()) {
+      logAuthEvent("verify-email", "failed", {
+        userId: otpDoc.userId.toString(),
+        email,
+        reason: "otp-locked-after-failures",
+        attemptCount: otpDoc.attemptCount,
+      });
       throw new AppError(
         429,
         "Too many invalid OTP attempts. Please request a new code or try again later.",
       );
     }
 
+    logAuthEvent("verify-email", "failed", {
+      userId: otpDoc.userId.toString(),
+      email,
+      reason: "invalid-otp",
+      attemptCount: otpDoc.attemptCount,
+    });
     throw new AppError(400, "Invalid OTP");
   }
 
@@ -326,6 +460,11 @@ export async function verifyUserEmail({ email, otp }) {
 
   await otpModel.deleteMany({
     userId: otpDoc.userId,
+  });
+
+  logAuthEvent("verify-email", "success", {
+    userId: user._id.toString(),
+    email: user.email,
   });
 
   return user;
