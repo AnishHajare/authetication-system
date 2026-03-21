@@ -32,7 +32,7 @@ test("logout revokes only the current session", async () => {
     email: "anish@example.com",
   });
 
-  await agentOne.post("/api/auth/login").send({
+  const loginOne = await agentOne.post("/api/auth/login").send({
     email: user.email,
     password,
   });
@@ -49,6 +49,12 @@ test("logout revokes only the current session", async () => {
   assert.equal(logoutResponse.status, 200);
   assert.equal(afterLogout.filter((session) => session.revoked).length, 1);
   assert.equal(afterLogout.filter((session) => !session.revoked).length, 1);
+
+  const getMeResponse = await agentOne
+    .get("/api/auth/get-me")
+    .set("Authorization", `Bearer ${loginOne.body.accessToken}`);
+
+  assert.equal(getMeResponse.status, 401);
 });
 
 test("logout-all revokes all active sessions for the user", async () => {
@@ -58,7 +64,7 @@ test("logout-all revokes all active sessions for the user", async () => {
     email: "anish@example.com",
   });
 
-  await agentOne.post("/api/auth/login").send({
+  const loginOne = await agentOne.post("/api/auth/login").send({
     email: user.email,
     password,
   });
@@ -73,4 +79,10 @@ test("logout-all revokes all active sessions for the user", async () => {
   assert.equal(response.status, 200);
   assert.equal(sessions.length, 2);
   assert.equal(sessions.every((session) => session.revoked), true);
+
+  const getMeResponse = await agentOne
+    .get("/api/auth/get-me")
+    .set("Authorization", `Bearer ${loginOne.body.accessToken}`);
+
+  assert.equal(getMeResponse.status, 401);
 });

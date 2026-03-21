@@ -72,7 +72,7 @@ export async function registerUser({ userName, email, password }) {
   });
 
   if (isAlreadyRegistered) {
-    throw new AppError(409, "Username or email already exists");
+    throw new AppError(409, "Unable to register with the provided credentials");
   }
 
   const hashedPassword = await bcrypt.hash(password, 10);
@@ -107,12 +107,8 @@ export function resetEmailSender() {
 export async function resendVerificationEmail(email) {
   const user = await userModel.findOne({ email });
 
-  if (!user) {
-    throw new AppError(404, "User not found");
-  }
-
-  if (user.verified) {
-    throw new AppError(400, "Email is already verified");
+  if (!user || user.verified) {
+    return false;
   }
 
   const latestOtp = await otpModel.findOne({ userId: user._id }).sort({
@@ -125,31 +121,29 @@ export async function resendVerificationEmail(email) {
       config.OTP_RESEND_COOLDOWN_SECONDS * 1000;
 
     if (nextAllowedAt > Date.now()) {
-      throw new AppError(
-        429,
-        `Please wait ${config.OTP_RESEND_COOLDOWN_SECONDS} seconds before requesting another OTP`,
-      );
+      return false;
     }
   }
 
   await sendVerificationEmail(user);
+  return true;
 }
 
 export async function loginUser({ email, password, ip, userAgent }) {
   const user = await userModel.findOne({ email });
 
   if (!user) {
-    throw new AppError(401, "Invalid credentials");
+    throw new AppError(401, "Invalid email or password");
   }
 
   if (!user.verified) {
-    throw new AppError(401, "Email not verified");
+    throw new AppError(401, "Invalid email or password");
   }
 
   const isPasswordValid = await bcrypt.compare(password, user.password);
 
   if (!isPasswordValid) {
-    throw new AppError(401, "Invalid credentials");
+    throw new AppError(401, "Invalid email or password");
   }
 
   const refreshToken = signRefreshToken({
@@ -176,18 +170,40 @@ export async function loginUser({ email, password, ip, userAgent }) {
   };
 }
 
-export async function getCurrentUser(accessToken) {
+export async function authenticateAccessToken(accessToken) {
   if (!accessToken) {
     throw new AppError(401, "Token not found");
   }
 
   const decoded = jwt.verify(accessToken, config.JWT_SECRET);
+  if (!decoded.sessionId) {
+    throw new AppError(401, "Unauthorized");
+  }
+
+  const session = await sessionModel.findOne({
+    _id: decoded.sessionId,
+    userId: decoded.id,
+    revoked: false,
+  });
+
+  if (!session) {
+    throw new AppError(401, "Unauthorized");
+  }
+
   const user = await userModel.findById(decoded.id).select("-password");
 
   if (!user) {
     throw new AppError(404, "User not found");
   }
 
+  return {
+    user,
+    session,
+  };
+}
+
+export async function getCurrentUser(accessToken) {
+  const { user } = await authenticateAccessToken(accessToken);
   return user;
 }
 

@@ -1,5 +1,4 @@
 import {
-  getCurrentUser,
   loginUser,
   registerUser,
   resendVerificationEmail,
@@ -43,10 +42,8 @@ export async function login(req, res) {
 }
 
 export async function getMe(req, res) {
-  const user = await getCurrentUser(req.headers.authorization?.split(" ")[1]);
-
   res.status(200).json({
-    user,
+    user: req.auth.user,
   });
 }
 
@@ -98,6 +95,6 @@ export async function resendVerification(req, res) {
   await resendVerificationEmail(req.body.email);
 
   res.status(200).json({
-    message: "Verification email sent successfully",
+    message: "If the account exists, a verification email will be sent",
   });
 }

@@ -76,6 +76,17 @@ export async function createLoginUser(overrides = {}) {
   return { user, password };
 }
 
+export async function createSessionForUser(user, overrides = {}) {
+  return sessionModel.create({
+    userId: user._id,
+    refreshTokenHash:
+      overrides.refreshTokenHash || hashValue(`refresh-${user._id}-${Date.now()}`),
+    ip: overrides.ip || "127.0.0.1",
+    userAgent: overrides.userAgent || "test-agent",
+    revoked: overrides.revoked ?? false,
+  });
+}
+
 export async function createOtpForUser(user, otp = "123456", overrides = {}) {
   const otpDoc = await otpModel.create({
     email: user.email,

@@ -38,7 +38,7 @@ test("login rejects unverified users", async () => {
   });
 
   assert.equal(response.status, 401);
-  assert.match(response.body.message, /not verified/i);
+  assert.match(response.body.message, /invalid email or password/i);
 });
 
 test("login rejects invalid credentials", async () => {
@@ -53,7 +53,7 @@ test("login rejects invalid credentials", async () => {
   });
 
   assert.equal(response.status, 401);
-  assert.match(response.body.message, /invalid credentials/i);
+  assert.match(response.body.message, /invalid email or password/i);
 });
 
 test("login succeeds and creates a session with a refresh cookie", async () => {

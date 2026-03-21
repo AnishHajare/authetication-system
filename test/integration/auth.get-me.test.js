@@ -2,6 +2,7 @@ import test, { after, before, beforeEach } from "node:test";
 import assert from "node:assert/strict";
 import {
   createAccessToken,
+  createSessionForUser,
   createTestClient,
   createUser,
   resetTestDoubles,
@@ -31,7 +32,8 @@ test("get-me returns the current user for a valid access token", async () => {
     email: "anish@example.com",
     verified: true,
   });
-  const accessToken = createAccessToken(user._id.toString());
+  const session = await createSessionForUser(user);
+  const accessToken = createAccessToken(user._id.toString(), session._id.toString());
 
   const response = await client
     .get("/api/auth/get-me")
@@ -40,6 +42,25 @@ test("get-me returns the current user for a valid access token", async () => {
   assert.equal(response.status, 200);
   assert.equal(response.body.user.email, user.email);
   assert.equal(response.body.user.password, undefined);
+});
+
+test("get-me rejects access tokens from revoked sessions", async () => {
+  const client = createTestClient();
+  const user = await createUser({
+    email: "anish@example.com",
+    verified: true,
+  });
+  const session = await createSessionForUser(user, {
+    revoked: true,
+  });
+  const accessToken = createAccessToken(user._id.toString(), session._id.toString());
+
+  const response = await client
+    .get("/api/auth/get-me")
+    .set("Authorization", `Bearer ${accessToken}`);
+
+  assert.equal(response.status, 401);
+  assert.match(response.body.message, /unauthorized/i);
 });
 
 test("get-me rejects missing access tokens", async () => {

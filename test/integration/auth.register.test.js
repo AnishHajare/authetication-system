@@ -82,5 +82,5 @@ test("register rejects duplicate usernames or emails", async () => {
   });
 
   assert.equal(response.status, 409);
-  assert.match(response.body.message, /already exists/i);
+  assert.match(response.body.message, /unable to register/i);
 });

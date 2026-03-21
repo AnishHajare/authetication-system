@@ -1,5 +1,6 @@
 import { Router } from "express";
 import * as authController from "../controllers/auth.controller.js";
+import { requireAuth } from "../middleware/auth.middleware.js";
 import { asyncHandler } from "../middleware/error.middleware.js";
 import { rateLimit } from "../middleware/rate-limit.middleware.js";
 import {
@@ -23,7 +24,7 @@ authRouter.post(
   validateLogin,
   asyncHandler(authController.login),
 );
-authRouter.get("/get-me", asyncHandler(authController.getMe));
+authRouter.get("/get-me", asyncHandler(requireAuth), asyncHandler(authController.getMe));
 authRouter.get(
   "/refresh-token",
   rateLimit("refresh-token"),

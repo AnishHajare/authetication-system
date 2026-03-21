@@ -51,9 +51,9 @@ test("resend verification sends a new otp after the cooldown window", async () =
   assert.notEqual(String(otpDocs[0]._id), String(oldOtp._id));
 });
 
-test("resend verification is blocked during cooldown", async () => {
+test("resend verification returns a neutral success response during cooldown", async () => {
   const client = createTestClient();
-  installEmailSpy();
+  const sentEmails = installEmailSpy();
   const user = await createUser({
     email: "anish@example.com",
   });
@@ -64,13 +64,14 @@ test("resend verification is blocked during cooldown", async () => {
     .post("/api/auth/resend-verification-email")
     .send({ email: user.email });
 
-  assert.equal(response.status, 429);
-  assert.match(response.body.message, /please wait/i);
+  assert.equal(response.status, 200);
+  assert.match(response.body.message, /if the account exists/i);
+  assert.equal(sentEmails.length, 0);
 });
 
-test("resend verification rejects already verified users", async () => {
+test("resend verification returns a neutral success response for verified users", async () => {
   const client = createTestClient();
-  installEmailSpy();
+  const sentEmails = installEmailSpy();
   const user = await createUser({
     email: "anish@example.com",
     verified: true,
@@ -80,6 +81,7 @@ test("resend verification rejects already verified users", async () => {
     .post("/api/auth/resend-verification-email")
     .send({ email: user.email });
 
-  assert.equal(response.status, 400);
-  assert.match(response.body.message, /already verified/i);
+  assert.equal(response.status, 200);
+  assert.match(response.body.message, /if the account exists/i);
+  assert.equal(sentEmails.length, 0);
 });
