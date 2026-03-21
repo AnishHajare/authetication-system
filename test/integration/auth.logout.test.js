@@ -42,7 +42,7 @@ test("logout revokes only the current session", async () => {
   });
 
   const beforeLogout = await sessionModel.find({ userId: user._id });
-  const logoutResponse = await agentOne.get("/api/auth/logout");
+  const logoutResponse = await agentOne.post("/api/auth/logout");
   const afterLogout = await sessionModel.find({ userId: user._id });
 
   assert.equal(beforeLogout.length, 2);
@@ -73,7 +73,7 @@ test("logout-all revokes all active sessions for the user", async () => {
     password,
   });
 
-  const response = await agentOne.get("/api/auth/logout-all");
+  const response = await agentOne.post("/api/auth/logout-all");
   const sessions = await sessionModel.find({ userId: user._id });
 
   assert.equal(response.status, 200);

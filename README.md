@@ -84,9 +84,9 @@ Base path: `/api/auth`
 | `POST` | `/register`                  | Register a user and send verification OTP         |
 | `POST` | `/login`                     | Authenticate a verified user                      |
 | `GET`  | `/get-me`                    | Return the current user from the access token     |
-| `GET`  | `/refresh-token`             | Rotate refresh token and issue a new access token |
-| `GET`  | `/logout`                    | Revoke the current session                        |
-| `GET`  | `/logout-all`                | Revoke all sessions for the authenticated user    |
+| `POST` | `/refresh-token`             | Rotate refresh token and issue a new access token |
+| `POST` | `/logout`                    | Revoke the current session                        |
+| `POST` | `/logout-all`                | Revoke all sessions for the authenticated user    |
 | `POST` | `/verify-email`              | Verify the email address using OTP                |
 | `POST` | `/resend-verification-email` | Send a new OTP if the cooldown has passed         |
 

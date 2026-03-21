@@ -41,7 +41,7 @@ test("refresh-token rotates the refresh token and returns a new access token", a
     loginResponse.headers["set-cookie"],
   );
 
-  const refreshResponse = await client.get("/api/auth/refresh-token");
+  const refreshResponse = await client.post("/api/auth/refresh-token");
   const newRefreshToken = decodeRefreshTokenFromCookie(
     refreshResponse.headers["set-cookie"],
   );
@@ -68,10 +68,10 @@ test("refresh-token rejects reuse of the old refresh token after rotation", asyn
     loginResponse.headers["set-cookie"],
   );
 
-  await client.get("/api/auth/refresh-token");
+  await client.post("/api/auth/refresh-token");
 
   const reusedResponse = await createRequestClient()
-    .get("/api/auth/refresh-token")
+    .post("/api/auth/refresh-token")
     .set("Cookie", [`refreshToken=${oldRefreshToken}`]);
 
   assert.equal(reusedResponse.status, 400);

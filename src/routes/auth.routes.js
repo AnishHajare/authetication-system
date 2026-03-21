@@ -25,13 +25,13 @@ authRouter.post(
   asyncHandler(authController.login),
 );
 authRouter.get("/get-me", asyncHandler(requireAuth), asyncHandler(authController.getMe));
-authRouter.get(
+authRouter.post(
   "/refresh-token",
   rateLimit("refresh-token"),
   asyncHandler(authController.refreshToken),
 );
-authRouter.get("/logout", asyncHandler(authController.logout));
-authRouter.get("/logout-all", asyncHandler(authController.logoutAll));
+authRouter.post("/logout", asyncHandler(authController.logout));
+authRouter.post("/logout-all", asyncHandler(authController.logoutAll));
 authRouter.post(
   "/verify-email",
   rateLimit("verify-email"),
