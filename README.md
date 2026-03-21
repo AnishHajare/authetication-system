@@ -213,6 +213,28 @@ The API will be available at `http://localhost:3000`.
 - MongoDB data is persisted in the `mongo_data` Docker volume
 - The container uses `npm start`, which runs `node server.js`
 
+### Run the Test Suite in Docker
+
+```bash
+docker compose run --rm test
+```
+
+This starts the test container, connects it to the Mongo container defined in `compose.yaml`, and runs `npm test`.
+
+### Docker Cleanup
+
+Stop the app stack:
+
+```bash
+docker compose down
+```
+
+Remove containers and the Mongo volume:
+
+```bash
+docker compose down -v
+```
+
 ## Testing
 
 Run the current test suite with:
@@ -221,7 +243,7 @@ Run the current test suite with:
 npm test
 ```
 
-The included tests cover validation middleware and rate limiting. They do not perform live database or SMTP integration checks.
+The test suite includes middleware coverage and API integration flows. Email delivery is mocked during tests, and Docker-based test runs use the Mongo container instead of `mongodb-memory-server`.
 
 ## Security Notes
 

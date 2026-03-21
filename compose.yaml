@@ -3,6 +3,7 @@ services:
     build:
       context: .
       dockerfile: Dockerfile
+      target: production
     ports:
       - "3000:3000"
     env_file:
@@ -11,6 +12,22 @@ services:
       MONGO_URI: mongodb://mongo:27017/authentication-system
       NODE_ENV: production
       PORT: 3000
+    depends_on:
+      - mongo
+
+  test:
+    build:
+      context: .
+      dockerfile: Dockerfile
+      target: test
+    env_file:
+      - .env
+    environment:
+      MONGO_URI: mongodb://mongo:27017/authentication-system-test
+      NODE_ENV: test
+      PORT: 3000
+      COOKIE_SECURE: "false"
+      TEST_USE_EXTERNAL_MONGO: "true"
     depends_on:
       - mongo
 
