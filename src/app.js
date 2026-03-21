@@ -1,4 +1,5 @@
 import express from "express";
+import helmet from "helmet";
 import morgan from "morgan";
 import authRouter from "./routes/auth.routes.js";
 import cookieParser from "cookie-parser";
@@ -9,6 +10,12 @@ import {
 
 const app = express();
 
+app.use(
+  helmet({
+    contentSecurityPolicy: false,
+    crossOriginEmbedderPolicy: false,
+  }),
+);
 app.use(express.json());
 app.use(morgan("dev"));
 app.use(cookieParser());
