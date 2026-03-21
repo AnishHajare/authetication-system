@@ -273,18 +273,45 @@ export async function revokeAllSessions(refreshToken) {
 }
 
 export async function verifyUserEmail({ email, otp }) {
-  const otpDoc = await otpModel.findOne({
-    email,
-    otpHash: hashValue(otp),
+  const otpDoc = await otpModel.findOne({ email }).sort({
+    createdAt: -1,
   });
 
   if (!otpDoc) {
     throw new AppError(400, "Invalid OTP");
   }
 
+  if (otpDoc.lockedUntil && otpDoc.lockedUntil > new Date()) {
+    throw new AppError(
+      429,
+      "Too many invalid OTP attempts. Please request a new code or try again later.",
+    );
+  }
+
   if (otpDoc.expiresAt <= new Date()) {
     await otpModel.deleteOne({ _id: otpDoc._id });
     throw new AppError(400, "OTP has expired");
+  }
+
+  if (otpDoc.otpHash !== hashValue(otp)) {
+    otpDoc.attemptCount += 1;
+
+    if (otpDoc.attemptCount >= config.OTP_MAX_ATTEMPTS) {
+      otpDoc.lockedUntil = new Date(
+        Date.now() + config.OTP_LOCKOUT_MINUTES * 60 * 1000,
+      );
+    }
+
+    await otpDoc.save();
+
+    if (otpDoc.lockedUntil && otpDoc.lockedUntil > new Date()) {
+      throw new AppError(
+        429,
+        "Too many invalid OTP attempts. Please request a new code or try again later.",
+      );
+    }
+
+    throw new AppError(400, "Invalid OTP");
   }
 
   const user = await userModel.findByIdAndUpdate(

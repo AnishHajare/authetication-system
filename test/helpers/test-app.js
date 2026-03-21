@@ -95,6 +95,8 @@ export async function createOtpForUser(user, otp = "123456", overrides = {}) {
     expiresAt:
       overrides.expiresAt ||
       new Date(Date.now() + 10 * 60 * 1000),
+    attemptCount: overrides.attemptCount ?? 0,
+    lockedUntil: overrides.lockedUntil ?? null,
   });
 
   if (overrides.createdAt || overrides.updatedAt) {

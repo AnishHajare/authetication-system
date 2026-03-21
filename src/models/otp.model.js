@@ -19,6 +19,14 @@ const otpSchema = new mongoose.Schema(
       type: Date,
       required: [true, "OTP expiry is required"],
     },
+    attemptCount: {
+      type: Number,
+      default: 0,
+    },
+    lockedUntil: {
+      type: Date,
+      default: null,
+    },
   },
   {
     timestamps: true,
